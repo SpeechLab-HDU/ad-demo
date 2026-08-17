@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AD 语音识别演示</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3d;
+    --accent: #7c6aff;
+    --accent2: #ff6a9a;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+    --success: #4ade80;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,106,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,106,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb-1 { width: 500px; height: 500px; background: var(--accent); top: -150px; right: -100px; }
+  .orb-2 { width: 400px; height: 400px; background: var(--accent2); bottom: -100px; left: -100px; }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 60px 24px 80px;
+  }
+
+  header { margin-bottom: 56px; animation: fadeDown 0.6s ease both; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(124,106,255,0.3);
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-size: clamp(2.4rem, 6vw, 3.8rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 16px;
+  }
+
+  h1 span {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-weight: 400;
+    font-family: var(--mono);
+    line-height: 1.6;
+  }
+
+  .upload-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 48px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: var(--surface);
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s 0.1s ease both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(124,106,255,0.06), rgba(255,106,154,0.04));
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  .upload-zone:hover::before,
+  .upload-zone.drag-over::before { opacity: 1; }
+
+  .upload-zone:hover,
+  .upload-zone.drag-over {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .upload-icon { font-size: 2.8rem; margin-bottom: 16px; display: block; transition: transform 0.3s; }
+  .upload-zone:hover .upload-icon { transform: scale(1.1) rotate(-5deg); }
+  .upload-zone h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+  .upload-zone p { font-size: 0.82rem; color: var(--muted); font-family: var(--mono); }
+
+  #fileInput { display: none; }
+
+  .file-selected {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--success);
+    display: none;
+  }
+
+  .options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .option-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+  }
+
+  .option-group label {
+    display: block;
+    font-size: 0.72rem;
+    font-family: var(--mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .toggle-row {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    padding: 10px 14px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle-row span { font-size: 0.82rem; }
+
+  .toggle {
+    width: 36px; height: 20px;
+    background: var(--border);
+    border-radius: 10px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: white;
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: transform 0.2s;
+  }
+
+  .toggle.on { background: var(--accent); }
+  .toggle.on::after { transform: translateX(16px); }
+
+  .btn-predict {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, var(--accent), #9b6aff);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-family: var(--sans);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    margin-bottom: 32px;
+    animation: fadeUp 0.6s 0.3s ease both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-predict::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .btn-predict:hover::before { opacity: 1; }
+  .btn-predict:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,106,255,0.4); }
+  .btn-predict:active { transform: translateY(0); }
+  .btn-predict:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .result-box { display: none; animation: fadeUp 0.5s ease both; }
+
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .result-header h3 {
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .meta-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .pill {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .pill.label { border-color: rgba(124,106,255,0.4); color: var(--accent); font-weight: 500; }
+  .pill.time { border-color: rgba(74,222,128,0.3); color: var(--success); }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    position: relative;
+  }
+
+  .prediction-line {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .prediction-label {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .prediction-label.hc  { color: var(--success); }
+  .prediction-label.mci { color: var(--warn); }
+  .prediction-label.ad  { color: var(--danger); }
+
+  .confidence-text {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .prob-row { margin-bottom: 18px; }
+
+  .prob-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .prob-label-row .pct { color: var(--text); }
+
+  .prob-bar {
+    height: 10px;
+    background: var(--surface2);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .prob-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 6px;
+    transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .prob-fill.hc  { background: linear-gradient(90deg, #16a34a, var(--success)); }
+  .prob-fill.mci { background: linear-gradient(90deg, #d97706, var(--warn)); }
+  .prob-fill.ad  { background: linear-gradient(90deg, #dc2626, var(--danger)); }
+
+  .detail-section {
+    margin-top: 24px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    display: none;
+  }
+
+  .detail-section.visible { display: block; }
+
+  .detail-section h4 {
+    font-size: 0.72rem;
+    font-family: var(--mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .detail-group { margin-bottom: 14px; }
+  .detail-group .prob-label-row { color: var(--muted); }
+
+  .actions { display: flex; gap: 12px; margin-top: 16px; }
+
+  .btn-action {
+    flex: 1;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-action:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(124,106,255,0.08);
+  }
+
+  .loading-bar {
+    display: none;
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .loading-bar.active { display: block; }
+
+  .loading-bar::after {
+    content: '';
+    display: block;
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    animation: slide 1.2s ease-in-out infinite;
+  }
+
+  .status-msg {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 24px;
+    min-height: 20px;
+  }
+
+  .error-box {
+    background: rgba(255, 80, 80, 0.08);
+    border: 1px solid rgba(255, 80, 80, 0.25);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: #ff8080;
+    display: none;
+    margin-bottom: 16px;
+    white-space: pre-wrap;
+  }
+
+  footer {
+    margin-top: 64px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    animation: fadeUp 0.6s 0.4s ease both;
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slide {
+    0%   { transform: translateX(-150%); }
+    100% { transform: translateX(350%); }
+  }
+
+  @media (max-width: 520px) {
+    .options { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="container">
+
+  <header>
+    <div class="tag">// 多模态融合 · Wav2Vec2 + OpenSMILE + SVM</div>
+    <h1>AD <span>语音识别</span></h1>
+    <p class="subtitle">
+      阿尔茨海默病自动识别 · 三分类 HC / MCI / AD<br>
+      语音 Wav2Vec2 (192d) + 声学 OpenSMILE (6373d) → SVM soft-voting
+    </p>
+  </header>
+
+  <!-- Upload -->
+  <div class="upload-zone" id="dropZone">
+    <span class="upload-icon">&#9670;</span>
+    <h3>上传患者语音文件</h3>
+    <p>WAV, MP3, M4A, OGG, FLAC · 10–60 秒 · 点击或拖拽上传</p>
+    <div class="file-selected" id="fileSelected">✓ <span id="fileName"></span></div>
+    <input type="file" id="fileInput" accept=".wav,.mp3,.m4a,.ogg,.flac,.mp4,.webm"/>
+  </div>
+
+  <!-- Options -->
+  <div class="options">
+    <div class="option-group">
+      <label>模态明细</label>
+      <div class="toggle-row" id="detailToggle" onclick="toggleDetail()">
+        <span id="detailLabel">显示各模态概率</span>
+        <div class="toggle" id="detailSwitch"></div>
+      </div>
+    </div>
+
+    <div class="option-group">
+      <label>模型信息</label>
+      <div style="font-family:var(--mono);font-size:0.78rem;padding:10px 0;color:var(--muted)">
+        <span id="modelInfo">NCMMSC 多模态融合</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Button -->
+  <button class="btn-predict" id="predictBtn" onclick="predict()">
+    开始识别 &#8594;
+  </button>
+
+  <!-- Status -->
+  <div class="loading-bar" id="loadingBar"></div>
+  <div class="status-msg" id="statusMsg"></div>
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- Result -->
+  <div class="result-box" id="resultBox">
+    <div class="result-header">
+      <h3>识别结果</h3>
+      <div class="meta-pills">
+        <div class="pill label" id="labelPill">label: —</div>
+        <div class="pill time" id="timePill">— sec</div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="prediction-line">
+        <div class="prediction-label" id="predictionLabel">—</div>
+        <div class="confidence-text" id="confidenceText"></div>
+      </div>
+
+      <div class="prob-row">
+        <div class="prob-label-row">
+          <span>HC · 健康对照</span>
+          <span class="pct" id="pctHC">0%</span>
+        </div>
+        <div class="prob-bar"><div class="prob-fill hc" id="barHC"></div></div>
+      </div>
+
+      <div class="prob-row">
+        <div class="prob-label-row">
+          <span>MCI · 轻度认知障碍</span>
+          <span class="pct" id="pctMCI">0%</span>
+        </div>
+        <div class="prob-bar"><div class="prob-fill mci" id="barMCI"></div></div>
+      </div>
+
+      <div class="prob-row">
+        <div class="prob-label-row">
+          <span>AD · 阿尔茨海默病</span>
+          <span class="pct" id="pctAD">0%</span>
+        </div>
+        <div class="prob-bar"><div class="prob-fill ad" id="barAD"></div></div>
+      </div>
+
+      <div class="detail-section" id="detailSection">
+        <h4>各模态概率</h4>
+        <div class="detail-group" id="detailWav">
+          <div class="prob-label-row"><span>Wav2Vec2 语音模态</span></div>
+        </div>
+        <div class="detail-group" id="detailComp">
+          <div class="prob-label-row"><span>OpenSMILE 声学模态</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-action" onclick="copyResult()">复制结果</button>
+      <button class="btn-action" onclick="downloadResult()">下载 .txt</button>
+      <button class="btn-action" onclick="clearAll()">清空</button>
+    </div>
+  </div>
+
+  <footer>
+    基于 <a href="https://github.com/openai/whisper" target="_blank">Flask</a> + 多模态融合模型 ·
+    <a href="https://doi.org/10.1007/s00521-024-09924-1" target="_blank">Applied Intelligence 论文</a>
+  </footer>
+
+</div>
+
+<script>
+  let detailOn = false;
+  let lastResult = null;
+
+  // ── Drag & Drop ───────────────────────────────────────────────────────────
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) setFile(fileInput.files[0]);
+  });
+
+  function setFile(file) {
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSelected').style.display = 'block';
+    checkDuration(file);
+  }
+
+  // ── Client-side duration pre-check (10-60s); server remains authoritative ──
+  function checkDuration(file) {
+    const MIN_S = 10, MAX_S = 60;
+    const audio = new Audio();
+    audio.preload = 'metadata';
+    audio.onloadedmetadata = () => {
+      const d = audio.duration;
+      if (d > 0 && !isNaN(d)) {
+        if (d < MIN_S || d > MAX_S) {
+          showError(`音频时长为 ${d.toFixed(1)} 秒，需 ${MIN_S}-${MAX_S} 秒。请重新选择文件。`);
+          clearSelected();
+        } else {
+          hideError();
+        }
+      }
+      URL.revokeObjectURL(audio.src);
+    };
+    audio.onerror = () => {
+      URL.revokeObjectURL(audio.src);
+      hideError();
+    };
+    audio.src = URL.createObjectURL(file);
+  }
+
+  function clearSelected() {
+    document.getElementById('fileSelected').style.display = 'none';
+    document.getElementById('fileName').textContent = '';
+    fileInput.value = '';
+  }
+
+  // ── Toggle detail ─────────────────────────────────────────────────────────
+  function toggleDetail() {
+    detailOn = !detailOn;
+    document.getElementById('detailSwitch').classList.toggle('on', detailOn);
+    document.getElementById('detailLabel').textContent =
+      detailOn ? '模态明细: ON' : '显示各模态概率';
+  }
+
+  // ── Load model info ───────────────────────────────────────────────────────
+  async function loadModelInfo() {
+    try {
+      const res = await fetch('/models');
+      const data = await res.json();
+      const el = document.getElementById('modelInfo');
+      if (data.backend === 'mock') {
+        el.textContent = 'Mock 占位后端（无真实模型）';
+      } else {
+        el.textContent = `${data.name}`;
+      }
+    } catch (e) { /* ignore */ }
+  }
+  loadModelInfo();
+
+  // ── Main prediction ───────────────────────────────────────────────────────
+  async function predict() {
+    const file = fileInput.files[0];
+    if (!file) {
+      showError("请先选择音频文件。");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('audio', file);
+    formData.append('detail', detailOn ? 'true' : 'false');
+
+    setLoading(true);
+    hideError();
+    document.getElementById('resultBox').style.display = 'none';
+    setStatus('正在上传并识别...');
+
+    try {
+      const res = await fetch('/predict', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        showError(data.error || '识别失败，请重试。');
+        return;
+      }
+
+      renderResult(data);
+      setStatus('');
+    } catch (err) {
+      showError('网络错误: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderResult(data) {
+    lastResult = data;
+    const label = data.label;
+    const probs = data.probs;
+
+    const el = document.getElementById('predictionLabel');
+    el.textContent = label;
+    el.className = 'prediction-label ' + (label || '').toLowerCase();
+
+    const labelNames = { HC: 'HC · 健康', MCI: 'MCI · 轻度认知障碍', AD: 'AD · 阿尔茨海默病' };
+    document.getElementById('labelPill').textContent = `label: ${label}`;
+    document.getElementById('timePill').textContent =
+      `${data.processing_time}s 处理 · ${data.audio_duration}s 音频`;
+
+    const conf = (data.confidence * 100).toFixed(1);
+    document.getElementById('confidenceText').textContent =
+      `置信度 ${conf}%`;
+
+    const pctEls = { HC: 'pctHC', MCI: 'pctMCI', AD: 'pctAD' };
+    const barEls = { HC: 'barHC', MCI: 'barMCI', AD: 'barAD' };
+    ['HC', 'MCI', 'AD'].forEach(k => {
+      const v = probs[k] || 0;
+      document.getElementById(pctEls[k]).textContent = (v * 100).toFixed(1) + '%';
+      requestAnimationFrame(() => {
+        document.getElementById(barEls[k]).style.width = (v * 100) + '%';
+      });
+    });
+
+    renderDetail(data.detail);
+    document.getElementById('resultBox').style.display = 'block';
+  }
+
+  function renderDetail(detail) {
+    const section = document.getElementById('detailSection');
+    if (!detail) { section.classList.remove('visible'); return; }
+    section.classList.add('visible');
+
+    renderDetailGroup('detailWav', 'Wav2Vec2 语音模态', detail.wav_probs);
+    renderDetailGroup('detailComp', 'OpenSMILE 声学模态', detail.comp_probs);
+  }
+
+  function renderDetailGroup(groupId, title, probs) {
+    if (!probs) return;
+    const group = document.getElementById(groupId);
+    const labelRow = group.querySelector('.prob-label-row');
+    labelRow.innerHTML = `<span>${title}</span>`;
+    ['HC', 'MCI', 'AD'].forEach(k => {
+      const v = probs[k] || 0;
+      const row = document.createElement('div');
+      row.className = 'prob-row';
+      row.style.marginBottom = '10px';
+      row.innerHTML = `
+        <div class="prob-label-row" style="color:var(--muted);margin-bottom:4px">
+          <span>${k}</span>
+          <span class="pct">${(v * 100).toFixed(1)}%</span>
+        </div>
+        <div class="prob-bar" style="height:6px">
+          <div class="prob-fill ${k.toLowerCase()}" style="width:${(v * 100)}%"></div>
+        </div>`;
+      group.appendChild(row);
+    });
+  }
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  function copyResult() {
+    if (!lastResult) return;
+    const text = formatResult(lastResult);
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = event.target;
+      btn.textContent = '已复制!';
+      setTimeout(() => btn.textContent = '复制结果', 1500);
+    });
+  }
+
+  function formatResult(data) {
+    const lines = [
+      `标签: ${data.label}`,
+      `置信度: ${(data.confidence * 100).toFixed(1)}%`,
+      `HC: ${(data.probs.HC * 100).toFixed(1)}% | MCI: ${(data.probs.MCI * 100).toFixed(1)}% | AD: ${(data.probs.AD * 100).toFixed(1)}%`,
+      `音频时长: ${data.audio_duration}s | 处理时间: ${data.processing_time}s`,
+    ];
+    return lines.join('\n');
+  }
+
+  function downloadResult() {
+    if (!lastResult) return;
+    const blob = new Blob([formatResult(lastResult)], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ad_result.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function clearAll() {
+    document.getElementById('resultBox').style.display = 'none';
+    document.getElementById('fileSelected').style.display = 'none';
+    fileInput.value = '';
+    hideError();
+    setStatus('');
+    ['barHC', 'barMCI', 'barAD'].forEach(id => {
+      document.getElementById(id).style.width = '0';
+    });
+    document.getElementById('detailSection').classList.remove('visible');
+    document.getElementById('detailWav').querySelector('.prob-row')?.remove?.();
+    document.getElementById('detailComp').querySelector('.prob-row')?.remove?.();
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function setLoading(on) {
+    document.getElementById('loadingBar').classList.toggle('active', on);
+    document.getElementById('predictBtn').disabled = on;
+    document.getElementById('predictBtn').textContent = on ? '识别中...' : '开始识别 →';
+  }
+
+  function setStatus(msg) {
+    document.getElementById('statusMsg').textContent = msg;
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = '⚠ ' + msg;
+    box.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').style.display = 'none';
+  }
+</script>
+</body>
+</html>
