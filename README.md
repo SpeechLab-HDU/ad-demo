@@ -15,13 +15,11 @@
 
 ## 项目结构
 ```
-whisper-transcriber/
-├── app.py            # Flask web server + API 路由
-├── predictor.py      # AD 识别推理逻辑（复用 NCMMSC 模型）
-├── index.html        # 前端 UI（HTML/CSS/JS）
-├── requirements.txt  # Python 依赖
-├── deploy/           # frp 公网穿透（frpc 二进制 + 配置 + 启动脚本）
-└── README.md
+app.py            # Flask web server + API 路由
+predictor.py      # AD 识别推理逻辑（复用 NCMMSC 模型）
+index.html        # 前端 UI（HTML/CSS/JS）
+requirements.txt  # Python 依赖
+README.md
 ```
 
 ## 依赖与模型就绪检查
