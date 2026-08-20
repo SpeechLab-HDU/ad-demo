@@ -14,6 +14,7 @@ import tempfile
 import subprocess
 from predictor import load_model, classify_audio, get_model_info, ModelNotLoadedError
 
+
 # ── App Setup ─────────────────────────────────────────────────────────────────
 
 app = Flask(__name__)
@@ -38,8 +39,8 @@ except Exception as e:
 ALLOWED_EXTENSIONS = {"mp3", "wav", "m4a", "ogg", "flac", "mp4", "webm"}
 
 # Accepted audio duration range (seconds), configurable via env vars.
-MIN_AUDIO_SECONDS = float(os.environ.get("MIN_AUDIO_SECONDS", "10"))
-MAX_AUDIO_SECONDS = float(os.environ.get("MAX_AUDIO_SECONDS", "60"))
+MIN_AUDIO_SECONDS = float(os.environ.get("MIN_AUDIO_SECONDS", "30"))
+MAX_AUDIO_SECONDS = float(os.environ.get("MAX_AUDIO_SECONDS", "70"))
 
 # Cap upload size to avoid large-file abuse when exposed publicly (auto 413).
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MB
@@ -97,7 +98,7 @@ def to_16k_wav(src_path: str, dst_path: str) -> str:
 
 # ── HTML Template ─────────────────────────────────────────────────────────────
 # Loaded from index.html (kept separate for cleanliness)
-with open("index.html", "r") as f:
+with open("index1.html", "r") as f:
     HTML_TEMPLATE = f.read()
 
 
