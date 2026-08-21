@@ -4,3 +4,8 @@ __pycache__/
 .venv/
 *.m4a
 *.wav
+
+# 后端代码仅本地保留，GitHub Pages 只托管静态前端
+app.py
+predictor.py
+requirements.txt

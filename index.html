@@ -583,6 +583,8 @@
   let detailOn = false;
   let lastResult = null;
 
+  const API_BASE = 'http://120.26.244.136:18080';   // 公网后端地址
+
   // ── Drag & Drop ───────────────────────────────────────────────────────────
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
@@ -654,7 +656,7 @@
   // ── Load model info ───────────────────────────────────────────────────────
   async function loadModelInfo() {
     try {
-      const res = await fetch('/models');
+      const res = await fetch(API_BASE + '/models');
       const data = await res.json();
       const el = document.getElementById('modelInfo');
       if (data.backend === 'mock') {
@@ -684,7 +686,7 @@
     setStatus('正在上传并识别...');
 
     try {
-      const res = await fetch('/predict', { method: 'POST', body: formData });
+      const res = await fetch(API_BASE + '/predict', { method: 'POST', body: formData });
       const data = await res.json();
 
       if (!res.ok || data.error) {
